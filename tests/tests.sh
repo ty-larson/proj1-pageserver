@@ -25,8 +25,8 @@ function expect_status() {
     # Args
     path=$1
     expect=$2
-    curl --silent -i ${URLbase}/${path} >/tmp/,$$
-    if grep -q ${expect} /tmp/,$$ ; then 
+    curl --silent ${URLbase}/${path} -D /tmp/,,$$ >/tmp/,$$
+    if grep -q ${expect} /tmp/,,$$ ; then 
 	echo "Pass --  found ${expect} in ${URLbase}/${path} "
     else
         echo "*** FAIL *** expecting status ${expect} in ${URLbase}/${path} "
