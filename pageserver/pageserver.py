@@ -15,6 +15,8 @@
 
 import config    # Configure from .ini files and command line
 import logging   # Better than print statements
+import os        # Added for file path operations
+
 logging.basicConfig(format='%(levelname)s:%(message)s',
                     level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -23,6 +25,8 @@ log = logging.getLogger(__name__)
 import socket    # Basic TCP/IP communication on the internet
 import _thread   # Response computation runs concurrently with main program
 
+# Global variable to store our document root so we only read the config once
+DOCROOT = ""
 
 def listen(portnum):
     """
@@ -83,16 +87,43 @@ def respond(sock):
     This server responds only to GET requests (not PUT, POST, or UPDATE).
     Any valid GET request is answered with an ascii graphic of a cat.
     """
+    global DOCROOT
     sent = 0
     request = sock.recv(1024)  # We accept only short requests
+    if not request:
+        sock.close()
+        return
+        
     request = str(request, encoding='utf-8', errors='strict')
     log.info("--- Received request ----")
     log.info("Request was {}\n***\n".format(request))
 
     parts = request.split()
     if len(parts) > 1 and parts[0] == "GET":
-        transmit(STATUS_OK, sock)
-        transmit(CAT, sock)
+        url = parts[1]
+        
+        # c) Handle 403 Forbidden symbols
+        if "~" in url or "//" in url or ".." in url:
+            transmit(STATUS_FORBIDDEN, sock)
+            
+        # a) Handle .html and .css files
+        elif url.endswith(".html") or url.endswith(".css"):
+            filepath = os.path.join(DOCROOT, url.lstrip('/'))
+            
+            # b) Handle 404 Not Found if missing
+            if os.path.exists(filepath) and os.path.isfile(filepath):
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    transmit(STATUS_OK, sock)
+                    transmit(content, sock)
+                except Exception as e:
+                    transmit(STATUS_NOT_FOUND, sock)
+            else:
+                transmit(STATUS_NOT_FOUND, sock)
+        else:
+            transmit(STATUS_NOT_IMPLEMENTED, sock)
+            transmit("\nI don't handle this request: {}\n".format(request), sock)
     else:
         log.info("Unhandled request: {}".format(request))
         transmit(STATUS_NOT_IMPLEMENTED, sock)
@@ -109,6 +140,7 @@ def transmit(msg, sock):
     while sent < len(msg):
         buff = bytes(msg[sent:], encoding="utf-8")
         sent += sock.send(buff)
+
 
 ###
 #
@@ -130,14 +162,17 @@ def get_options():
     if options.PORT <= 1000:
         log.warning(("Port {} selected. " +
                          " Ports 0..1000 are reserved \n" +
-                         "by the operating system").format(options.port))
+                         "by the operating system").format(options.PORT))
 
     return options
 
 
 def main():
+    global DOCROOT
     options = get_options()
     port = options.PORT
+    DOCROOT = options.DOCROOT  # Load the setting exactly once
+    
     if options.DEBUG:
         log.setLevel(logging.DEBUG)
     sock = listen(port)

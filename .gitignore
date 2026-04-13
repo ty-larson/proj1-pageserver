@@ -1,0 +1,13 @@
+# Ignore credentials
+pageserver/credentials.ini
+credentials.ini
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore Makefile temporary files
+,pypid
