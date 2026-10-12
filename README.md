@@ -1,4 +1,4 @@
-# CIS 322 Mini-Project 1: Simple Web Server
+# CIS 322 Project 1: Simple Web Server
 
 ## Author: Ty Larson, tyl@uoregon.edu
 
